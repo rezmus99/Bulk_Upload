@@ -1,0 +1,1288 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ulive Bulk Upload Creator</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            900: '#0c4a6e',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        };
+    </script>
+    <style>
+        /* Custom scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(51, 65, 85, 0.8);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(71, 85, 105, 1);
+        }
+
+        .glass-card {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(51, 65, 85, 0.6);
+        }
+
+        .glass-input {
+            background: rgba(2, 6, 23, 0.6);
+            border: 1px solid rgba(51, 65, 85, 0.8);
+            color: #f8fafc;
+        }
+        .glass-input:focus {
+            border-color: #0284c7;
+            box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.25);
+            outline: none;
+        }
+
+        .matrix-cell:focus {
+            z-index: 20;
+            border-color: #38bdf8 !important;
+            box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.4);
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans selection:bg-sky-500 selection:text-white">
+
+    <div id="app" class="p-3 sm:p-5 md:p-8 max-w-[1700px] mx-auto min-h-screen flex flex-col">
+
+        <!-- HEADER NAVIGATION BAR -->
+        <header class="mb-6 p-4 rounded-2xl glass-card flex flex-wrap items-center justify-between gap-4 shadow-2xl">
+            <div class="flex items-center gap-3.5">
+                <div class="p-3 bg-gradient-to-br from-sky-500 to-blue-700 text-white rounded-xl shadow-lg shadow-sky-500/20 flex items-center justify-center">
+                    <i data-lucide="layers" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2.5">
+                        <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-white">Ulive Bulk Upload Creator</h1>
+                        <span class="text-[11px] px-2.5 py-0.5 rounded-full font-mono font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">v3.1 Pro</span>
+                    </div>
+                    <p class="text-xs text-slate-400 font-medium">Standard CSV Engine & Configuration List Manager</p>
+                </div>
+            </div>
+
+            <!-- TABS & SYSTEM CONTROLS -->
+            <div class="flex items-center flex-wrap gap-3 text-xs">
+                <!-- TAB SWITCHER -->
+                <div class="bg-slate-900/90 p-1 rounded-xl border border-slate-800 flex items-center gap-1">
+                    <button @click="currentTab = 'creator'" 
+                            class="px-4 py-2 rounded-lg font-bold transition-all flex items-center gap-2"
+                            :class="currentTab === 'creator' ? 'bg-sky-600 text-white shadow-md shadow-sky-600/30' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'">
+                        <i data-lucide="layout-grid" class="w-4 h-4"></i>
+                        <span>Bulk Creator</span>
+                        <span v-if="submittedProducts.length > 0" class="px-1.5 py-0.2 text-[10px] rounded-full bg-sky-400/20 text-sky-300 border border-sky-400/30 font-mono">{{ submittedProducts.length }}</span>
+                    </button>
+
+                    <button @click="currentTab = 'lists'" 
+                            class="px-4 py-2 rounded-lg font-bold transition-all flex items-center gap-2"
+                            :class="currentTab === 'lists' ? 'bg-sky-600 text-white shadow-md shadow-sky-600/30' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'">
+                        <i data-lucide="sliders" class="w-4 h-4"></i>
+                        <span>List Management</span>
+                        <span class="px-1.5 py-0.2 text-[10px] rounded-full bg-slate-800 text-slate-300 font-mono">{{ totalListItemsCount }}</span>
+                    </button>
+                </div>
+
+                <!-- QUICK ACTIONS -->
+                <button @click="openPreviewModal" class="px-3.5 py-2 rounded-xl border border-slate-700 bg-slate-900/80 hover:bg-slate-800 font-medium text-sky-400 flex items-center gap-2 transition-all">
+                    <i data-lucide="eye" class="w-4 h-4"></i>
+                    <span class="hidden sm:inline">CSV Preview</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- TAB 1: BULK CREATOR VIEW -->
+        <main v-if="currentTab === 'creator'" class="space-y-6 flex-1">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+                <!-- LEFT FORM INPUTS COLUMN -->
+                <section class="lg:col-span-4 glass-card p-5 rounded-2xl flex flex-col justify-between gap-5">
+                    <div class="space-y-4">
+                        <div class="border-b border-slate-800 pb-3 flex items-center justify-between">
+                            <h2 class="text-sm font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+                                <i data-lucide="package-plus" class="w-4 h-4 text-sky-400"></i>
+                                Product Specifications
+                            </h2>
+                            <button @click="resetForm" class="text-xs text-slate-400 hover:text-red-400 flex items-center gap-1 transition-colors">
+                                <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                                <span>Reset Form</span>
+                            </button>
+                        </div>
+
+                        <!-- 1. PRODUCT NAME -->
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                                Product Name <span class="text-sky-400">*</span>
+                            </label>
+                            <input type="text" 
+                                   v-model="form.productName" 
+                                   placeholder="e.g. www"
+                                   class="w-full text-sm rounded-xl glass-input px-3.5 py-2.5 font-medium transition-all">
+                        </div>
+
+                        <!-- 2. PRODUCT TYPE (SEARCHABLE DROPDOWN) -->
+                        <div class="relative">
+                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5 flex justify-between">
+                                <span>Product Type</span>
+                                <span class="text-[10px] text-slate-500 font-mono">{{ lists.productTypes.length }} items</span>
+                            </label>
+                            <div class="relative">
+                                <input type="text" 
+                                       v-model="form.productType" 
+                                       @focus="activeDropdown = 'productType'"
+                                       placeholder="Search or Select (e.g. DRS)"
+                                       class="w-full text-sm rounded-xl glass-input px-3.5 py-2.5 font-medium uppercase pr-8">
+                                <button @click.stop="toggleDropdown('productType')" type="button" class="absolute right-3 top-3 text-slate-400 hover:text-white">
+                                    <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                            <div v-if="activeDropdown === 'productType'" 
+                                 class="absolute z-30 left-0 right-0 mt-1 max-h-48 overflow-y-auto rounded-xl bg-slate-900 border border-slate-700 shadow-2xl p-1 font-mono text-xs">
+                                <div v-for="item in filteredProductTypes" 
+                                     :key="item" 
+                                     @mousedown.prevent="selectDropdownItem('productType', item)"
+                                     class="p-2 hover:bg-sky-600/30 hover:text-sky-300 rounded-lg cursor-pointer transition-colors flex justify-between items-center">
+                                    <span>{{ item }}</span>
+                                    <i data-lucide="check" class="w-3.5 h-3.5 text-sky-400" v-if="form.productType === item"></i>
+                                </div>
+                                <div v-if="filteredProductTypes.length === 0" class="p-3 text-slate-500 text-center">No match found</div>
+                            </div>
+                        </div>
+
+                        <!-- 3. RACK NAME (SEARCHABLE DROPDOWN) -->
+                        <div class="relative">
+                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5 flex justify-between">
+                                <span>Rack Name</span>
+                                <span class="text-[10px] text-slate-500 font-mono">{{ lists.rackNames.length }} items</span>
+                            </label>
+                            <div class="relative">
+                                <input type="text" 
+                                       v-model="form.rackName" 
+                                       @focus="activeDropdown = 'rackName'"
+                                       placeholder="Select Rack (e.g. J1, B2)"
+                                       class="w-full text-sm rounded-xl glass-input px-3.5 py-2.5 font-medium uppercase pr-8">
+                                <button @click.stop="toggleDropdown('rackName')" type="button" class="absolute right-3 top-3 text-slate-400 hover:text-white">
+                                    <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                            <div v-if="activeDropdown === 'rackName'" 
+                                 class="absolute z-30 left-0 right-0 mt-1 max-h-48 overflow-y-auto rounded-xl bg-slate-900 border border-slate-700 shadow-2xl p-1 font-mono text-xs">
+                                <div v-for="item in filteredRackNames" 
+                                     :key="item" 
+                                     @mousedown.prevent="selectDropdownItem('rackName', item)"
+                                     class="p-2 hover:bg-sky-600/30 hover:text-sky-300 rounded-lg cursor-pointer transition-colors flex justify-between items-center">
+                                    <span>{{ item }}</span>
+                                    <i data-lucide="check" class="w-3.5 h-3.5 text-sky-400" v-if="form.rackName === item"></i>
+                                </div>
+                                <div v-if="filteredRackNames.length === 0" class="p-3 text-slate-500 text-center">No match found</div>
+                            </div>
+                        </div>
+
+                        <!-- 4. RACK NO (SEARCHABLE DROPDOWN) -->
+                        <div class="relative">
+                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5 flex justify-between">
+                                <span>Rack No</span>
+                                <span class="text-[10px] text-slate-500 font-mono">{{ lists.rackNos.length }} items</span>
+                            </label>
+                            <div class="relative">
+                                <input type="text" 
+                                       v-model="form.rackNo" 
+                                       @focus="activeDropdown = 'rackNo'"
+                                       placeholder="Select Rack No (e.g. 01A, 05B)"
+                                       class="w-full text-sm rounded-xl glass-input px-3.5 py-2.5 font-medium uppercase pr-8">
+                                <button @click.stop="toggleDropdown('rackNo')" type="button" class="absolute right-3 top-3 text-slate-400 hover:text-white">
+                                    <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                            <div v-if="activeDropdown === 'rackNo'" 
+                                 class="absolute z-30 left-0 right-0 mt-1 max-h-48 overflow-y-auto rounded-xl bg-slate-900 border border-slate-700 shadow-2xl p-1 font-mono text-xs">
+                                <div v-for="item in filteredRackNos" 
+                                     :key="item" 
+                                     @mousedown.prevent="selectDropdownItem('rackNo', item)"
+                                     class="p-2 hover:bg-sky-600/30 hover:text-sky-300 rounded-lg cursor-pointer transition-colors flex justify-between items-center">
+                                    <span>{{ item }}</span>
+                                    <i data-lucide="check" class="w-3.5 h-3.5 text-sky-400" v-if="form.rackNo === item"></i>
+                                </div>
+                                <div v-if="filteredRackNos.length === 0" class="p-3 text-slate-500 text-center">No match found</div>
+                            </div>
+                        </div>
+
+                        <!-- 5. WEIGHT & PRICE GRID -->
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Weight (g)</label>
+                                <input type="number" v-model.number="form.weight" class="w-full text-sm rounded-xl glass-input px-3 py-2 font-mono font-bold text-center">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Price ($)</label>
+                                <input type="number" step="0.01" v-model.number="form.price" placeholder="0.00" class="w-full text-sm rounded-xl glass-input px-3 py-2 font-mono font-bold text-center">
+                            </div>
+                        </div>
+
+                        <!-- 6. TARGET TOTAL QTY (USER INPUT) -->
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
+                                Target Total Qty <span class="text-sky-400">*</span>
+                            </label>
+                            <input type="number" 
+                                   min="0" 
+                                   v-model.number="form.totalQtyTarget" 
+                                   placeholder="Enter total target quantity..."
+                                   class="w-full text-sm rounded-xl glass-input px-3.5 py-2.5 font-mono font-bold text-center">
+                        </div>
+
+                        <!-- LIVE METRICS & VALIDATION COUNTERS -->
+                        <div class="grid grid-cols-2 gap-3 pt-2">
+                            <div class="p-3 rounded-xl border flex flex-col items-center transition-colors"
+                                 :class="isQtyMatch ? 'bg-emerald-950/40 border-emerald-800/40 text-emerald-200' : 'bg-amber-950/40 border-amber-800/40 text-amber-200'">
+                                <span class="text-[10px] uppercase font-bold tracking-wider" :class="isQtyMatch ? 'text-emerald-400' : 'text-amber-400'">Matrix Sum Qty</span>
+                                <span class="text-xl font-mono font-extrabold">{{ liveMatrixTotals.totalQty }} <span class="text-xs font-normal opacity-70">pcs</span></span>
+                            </div>
+                            <div class="p-3 rounded-xl bg-sky-950/40 border border-sky-800/40 flex flex-col items-center">
+                                <span class="text-[10px] uppercase font-bold text-sky-400 tracking-wider">Active Variants</span>
+                                <span class="text-xl font-mono font-extrabold text-sky-200">{{ liveMatrixTotals.variantCount }} <span class="text-xs font-normal text-sky-400/70">items</span></span>
+                            </div>
+                        </div>
+
+                        <!-- PARENT ROW CODE PREVIEW -->
+                        <div class="p-3 rounded-xl bg-slate-900/90 border border-slate-800 text-xs space-y-1">
+                            <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider flex justify-between">
+                                <span>Parent Product Code</span>
+                                <i data-lucide="info" class="w-3.5 h-3.5 text-slate-500"></i>
+                            </div>
+                            <div class="font-mono font-bold text-sky-400 text-sm truncate">
+                                {{ generatedParentName }}
+                            </div>
+                        </div>
+
+                        <!-- COMMENT INPUT -->
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Comment</label>
+                            <textarea v-model="form.comment" rows="2" placeholder="Optional batch comments..." class="w-full text-xs rounded-xl glass-input p-2.5 font-mono"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- ACTION BUTTONS -->
+                    <div class="space-y-3 pt-4 border-t border-slate-800">
+                        <button @click="submitCurrentForm" 
+                                type="button"
+                                class="w-full py-3 px-4 rounded-xl font-bold uppercase tracking-wider transition-all shadow-lg shadow-sky-600/20 bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white flex items-center justify-center gap-2 active:scale-[0.98]">
+                            <i data-lucide="plus-circle" class="w-5 h-5"></i>
+                            <span>Submit Product to Batch</span>
+                        </button>
+
+                        <button @click="downloadSingleFormCsv" 
+                                type="button"
+                                class="w-full py-2.5 px-4 rounded-xl font-bold uppercase tracking-wider transition-all border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 flex items-center justify-center gap-2 active:scale-[0.98]">
+                            <i data-lucide="download" class="w-4 h-4"></i>
+                            <span>Generate Standard CSV</span>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- RIGHT MATRIX GRID SECTION -->
+                <section class="lg:col-span-8 glass-card p-5 rounded-2xl flex flex-col justify-between gap-4">
+                    <div class="space-y-4">
+                        <!-- MATRIX TOOLBAR -->
+                        <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800">
+                            <div class="flex items-center gap-2">
+                                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2">
+                                    <i data-lucide="grid" class="w-4 h-4 text-sky-400"></i>
+                                    Color & Size Quantity Matrix
+                                </h3>
+                                <span class="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 font-mono">{{ matrixRows.length }} rows</span>
+                            </div>
+
+                            <!-- QUICK MATRIX TOOLS -->
+                            <div class="flex items-center gap-2 text-xs flex-wrap">
+                                <div class="flex items-center border border-slate-700 rounded-xl bg-slate-900/80 p-1">
+                                    <span class="text-[10px] text-slate-400 font-semibold px-2">Quick Qty:</span>
+                                    <input type="number" min="0" v-model.number="quickFillQty" class="w-12 text-center text-xs rounded bg-slate-800 text-white font-mono p-1 border border-slate-700">
+                                    <button @click="quickFillMatrix" type="button" class="ml-1 px-2.5 py-1 bg-sky-600/30 hover:bg-sky-600/50 text-sky-300 rounded-lg font-medium transition-colors">
+                                        Fill Rows
+                                    </button>
+                                </div>
+
+                                <button @click="clearMatrix" type="button" class="px-3 py-1.5 rounded-xl border border-slate-700 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-red-400 transition-colors font-medium">
+                                    Clear Matrix
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- MATRIX TABLE -->
+                        <div class="overflow-x-auto pb-2">
+                            <table class="w-full text-left border-collapse min-w-[700px]">
+                                <thead>
+                                    <tr class="border-b border-slate-800 bg-slate-900/60 font-mono text-xs text-slate-400">
+                                        <th class="p-2.5 w-52 font-bold uppercase tracking-wider">COLOR</th>
+                                        <th v-for="size in lists.sizes" :key="size" class="p-2 text-center font-bold">
+                                            <span class="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-sky-300 font-mono inline-block min-w-[36px]">
+                                                {{ size }}
+                                            </span>
+                                        </th>
+                                        <th class="p-2 text-center w-12 text-slate-500">CLEAR</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody class="divide-y divide-slate-800/60">
+                                    <tr v-for="(row, rIdx) in matrixRows" :key="rIdx" class="hover:bg-slate-800/30 transition-colors">
+                                        <!-- COLOR SEARCHABLE DROPDOWN CELL -->
+                                        <td class="p-1.5 relative">
+                                            <div class="flex items-center gap-1.5">
+                                                <span class="text-[10px] font-mono text-slate-600 w-4 text-right">{{ rIdx + 1 }}</span>
+                                                <div class="relative flex-1">
+                                                    <input type="text" 
+                                                           v-model="row.color" 
+                                                           @focus="activeMatrixColorIndex = rIdx"
+                                                           placeholder="Select Color" 
+                                                           class="w-full text-xs font-semibold rounded-lg glass-input px-2.5 py-1.5 uppercase font-mono">
+                                                    
+                                                    <div v-if="activeMatrixColorIndex === rIdx" 
+                                                         class="absolute z-40 left-0 top-full mt-1 w-56 max-h-48 overflow-y-auto rounded-xl bg-slate-900 border border-slate-700 shadow-2xl p-1 text-xs font-mono">
+                                                        <div v-for="c in filterColors(row.color)" 
+                                                             :key="c" 
+                                                             @mousedown.prevent="selectMatrixColor(row, c)"
+                                                             class="p-1.5 hover:bg-sky-600/30 hover:text-sky-300 rounded-lg cursor-pointer transition-colors flex justify-between items-center">
+                                                            <span>{{ c }}</span>
+                                                            <i data-lucide="check" class="w-3 h-3 text-sky-400" v-if="row.color === c"></i>
+                                                        </div>
+                                                        <div v-if="filterColors(row.color).length === 0" class="p-2 text-slate-500 text-center">No color found</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+
+                                        <!-- SIZE QUANTITY INPUT CELLS -->
+                                        <td v-for="(size, sIdx) in lists.sizes" :key="sIdx" class="p-1 text-center">
+                                            <input type="number" 
+                                                   min="0"
+                                                   v-model.number="row.quantities[size]"
+                                                   @keydown="handleMatrixKeyNav($event, rIdx, sIdx)"
+                                                   placeholder=""
+                                                   class="w-full text-center text-xs font-mono font-bold rounded-lg glass-input py-1.5 transition-all matrix-cell"
+                                                   :class="row.quantities[size] > 0 ? 'bg-sky-950/80 border-sky-500 text-sky-200 font-bold' : 'text-slate-500'">
+                                        </td>
+
+                                        <!-- ROW CLEAR BUTTON -->
+                                        <td class="p-1 text-center">
+                                            <button @click="clearMatrixRow(row)" type="button" title="Clear Row" class="p-1 text-slate-600 hover:text-red-400 transition-colors rounded">
+                                                <i data-lucide="x" class="w-4 h-4"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- ADD ROW BUTTON -->
+                        <div class="flex justify-start pt-2">
+                            <button @click="addMatrixRow" type="button" class="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-sky-400 text-xs font-bold flex items-center gap-2 transition-all">
+                                <i data-lucide="plus" class="w-4 h-4"></i>
+                                <span>+ Add Color Row</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- MATRIX NAVIGATION HELPER -->
+                    <div class="text-[11px] text-slate-500 flex items-center justify-between pt-2 border-t border-slate-800">
+                        <span class="flex items-center gap-1.5">
+                            <i data-lucide="keyboard" class="w-4 h-4 text-sky-400"></i>
+                            <span>Use Arrow Keys or Tab/Enter to navigate cells smoothly.</span>
+                        </span>
+                        <span class="font-mono text-slate-400">Configured Sizes: <b>{{ lists.sizes.length }}</b></span>
+                    </div>
+                </section>
+            </div>
+
+            <!-- SUBMITTED BATCH MASTER LIST QUEUE -->
+            <section class="glass-card p-5 rounded-2xl space-y-4">
+                <div class="flex flex-wrap items-center justify-between gap-4 pb-3 border-b border-slate-800">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl">
+                            <i data-lucide="server" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-base font-bold text-slate-200">Submitted Batch Queue</h2>
+                            <p class="text-xs text-slate-400">
+                                Products: <b class="text-sky-400">{{ submittedProducts.length }}</b> | 
+                                Total Variants: <b class="text-purple-400">{{ batchGrandVariants }}</b> | 
+                                Total Quantity: <b class="text-emerald-400">{{ batchGrandQty }}</b> pcs
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- BATCH ACTIONS -->
+                    <div class="flex items-center flex-wrap gap-2 text-xs">
+                        <button @click="exportBatchCsv" 
+                                type="button"
+                                :disabled="submittedProducts.length === 0"
+                                class="px-4 py-2.5 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 transition-all flex items-center gap-2 shadow-lg shadow-emerald-600/20 active:scale-[0.98]">
+                            <i data-lucide="download" class="w-4 h-4"></i>
+                            <span>EXPORT ALL BATCH CSV ({{ submittedProducts.length }})</span>
+                        </button>
+
+                        <button @click="clearBatchQueue" 
+                                type="button"
+                                :disabled="submittedProducts.length === 0"
+                                class="px-3.5 py-2.5 rounded-xl font-medium text-red-400 hover:bg-red-500/10 border border-red-500/20 disabled:opacity-30 transition-all flex items-center gap-1.5">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            <span>Clear Queue</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- EMPTY STATE -->
+                <div v-if="submittedProducts.length === 0" class="p-8 text-center text-slate-500 border border-dashed border-slate-800 rounded-xl space-y-2">
+                    <i data-lucide="inbox" class="w-8 h-8 mx-auto opacity-40"></i>
+                    <p class="text-xs">No product batch submitted yet. Fill out specifications above and click <b>Submit Product to Batch</b>.</p>
+                </div>
+
+                <!-- QUEUED ITEMS TABLE -->
+                <div v-else class="space-y-4">
+                    <div v-for="(p, pIdx) in submittedProducts" :key="p.id" class="border border-slate-800 rounded-xl overflow-hidden bg-slate-900/50">
+                        <div class="p-3 bg-slate-900 flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 font-mono text-xs">
+                            <div class="flex items-center gap-2 font-bold">
+                                <span class="px-2 py-0.5 rounded bg-sky-600 text-white text-[10px]">#{{ pIdx + 1 }}</span>
+                                <span class="text-sky-300">{{ p.parentName }}</span>
+                                <span class="text-slate-600">|</span>
+                                <span class="text-slate-300">Name: {{ p.productName }}</span>
+                                <span class="text-slate-600">|</span>
+                                <span class="text-slate-400">Weight: {{ p.weight }}g</span>
+                                <span class="text-slate-600">|</span>
+                                <span class="text-slate-400">Price: ${{ p.price }}</span>
+                            </div>
+
+                            <div class="flex items-center gap-3">
+                                <span class="text-emerald-400 font-bold">{{ p.variants.length }} Variants ({{ p.totalQty }} pcs)</span>
+                                <button @click="removeQueuedProduct(pIdx)" type="button" class="text-red-400 hover:text-red-300 p-1 rounded">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- VARIANT PREVIEW TABLE -->
+                        <div class="overflow-x-auto max-h-40">
+                            <table class="w-full text-left text-xs font-mono divide-y divide-slate-800/50">
+                                <thead>
+                                    <tr class="bg-slate-950 text-slate-500 text-[10px]">
+                                        <th class="p-2">Name</th>
+                                        <th class="p-2">Keyword</th>
+                                        <th class="p-2">Main Product Keyword</th>
+                                        <th class="p-2 text-right">Price</th>
+                                        <th class="p-2 text-right">Inventory</th>
+                                        <th class="p-2 text-right">Weight</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-800/40">
+                                    <tr class="bg-sky-950/20 text-sky-200 font-bold">
+                                        <td class="p-2">{{ p.parentName }}</td>
+                                        <td class="p-2">{{ p.productName }}</td>
+                                        <td class="p-2">-</td>
+                                        <td class="p-2 text-right">-</td>
+                                        <td class="p-2 text-right">-</td>
+                                        <td class="p-2 text-right">-</td>
+                                    </tr>
+                                    <tr v-for="v in p.variants" :key="v.name" class="hover:bg-slate-800/30 text-slate-300">
+                                        <td class="p-2 font-bold">{{ v.name }}</td>
+                                        <td class="p-2 text-purple-300">{{ v.keyword }}</td>
+                                        <td class="p-2 text-slate-400">{{ v.mainKeyword }}</td>
+                                        <td class="p-2 text-right">${{ v.price }}</td>
+                                        <td class="p-2 text-right font-bold text-emerald-400">{{ v.inventory }}</td>
+                                        <td class="p-2 text-right text-slate-400">{{ v.weight }}g</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- TAB 2: LIST MANAGEMENT VIEW -->
+        <main v-if="currentTab === 'lists'" class="space-y-6 flex-1">
+            <div class="glass-card p-5 rounded-2xl flex flex-wrap items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i data-lucide="sliders" class="w-5 h-5 text-sky-400"></i>
+                        <span>Configuration List Manager</span>
+                    </h2>
+                    <p class="text-xs text-slate-400">Customize dropdown options for Product Types, Colors, Racks, and Sizes. Changes auto-save to browser storage.</p>
+                </div>
+
+                <!-- CONFIG IMPORTER / EXPORTER -->
+                <div class="flex items-center flex-wrap gap-2 text-xs">
+                    <button @click="exportListsConfigJson" type="button" class="px-3.5 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold flex items-center gap-2 transition-all shadow-md">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                        <span>Export Config JSON</span>
+                    </button>
+
+                    <label class="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold flex items-center gap-2 cursor-pointer transition-all shadow-md">
+                        <i data-lucide="upload" class="w-4 h-4"></i>
+                        <span>Import Config JSON</span>
+                        <input type="file" accept=".json" @change="importListsConfigJson" class="hidden">
+                    </label>
+
+                    <button @click="resetListsToDefaults" type="button" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 flex items-center gap-2 transition-all">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4 text-red-400"></i>
+                        <span>Reset System Defaults</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div v-for="cat in listCategories" :key="cat.key" class="glass-card p-5 rounded-2xl flex flex-col justify-between space-y-4">
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                            <div class="flex items-center gap-2">
+                                <div class="p-2 rounded-lg bg-sky-500/10 border border-sky-500/20 text-sky-400">
+                                    <i :data-lucide="cat.icon" class="w-4 h-4"></i>
+                                </div>
+                                <h3 class="text-sm font-bold text-slate-200 uppercase tracking-wider">{{ cat.title }}</h3>
+                            </div>
+                            <span class="text-xs px-2.5 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-sky-400 font-mono font-bold">
+                                {{ lists[cat.key].length }}
+                            </span>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <input type="text" 
+                                   v-model="cat.newItemInput" 
+                                   @keyup.enter="addSingleListItem(cat.key)"
+                                   :placeholder="'Add new ' + cat.title"
+                                   class="flex-1 text-xs rounded-xl glass-input px-3 py-2 uppercase font-mono">
+                            <button @click="addSingleListItem(cat.key)" type="button" class="p-2 bg-sky-600 hover:bg-sky-500 text-white rounded-xl transition-colors">
+                                <i data-lucide="plus" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+
+                        <div class="space-y-2">
+                            <button @click="cat.showBulk = !cat.showBulk" type="button" class="text-[11px] text-sky-400 hover:underline flex items-center gap-1 font-medium">
+                                <i data-lucide="file-text" class="w-3 h-3"></i>
+                                <span>{{ cat.showBulk ? 'Hide Bulk Paste' : '+ Bulk Add Items' }}</span>
+                            </button>
+
+                            <div v-if="cat.showBulk" class="space-y-2 p-2.5 rounded-xl bg-slate-950/80 border border-slate-800">
+                                <textarea v-model="cat.bulkInput" rows="3" placeholder="Paste items separated by newline or comma..." class="w-full text-xs rounded-lg glass-input p-2 uppercase font-mono"></textarea>
+                                <button @click="processBulkListAdd(cat.key)" type="button" class="w-full py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition-colors">
+                                    Process Bulk Add
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="max-h-56 overflow-y-auto p-2 rounded-xl bg-slate-950/60 border border-slate-800 flex flex-wrap gap-1.5">
+                            <span v-for="(item, iIdx) in lists[cat.key]" 
+                                  :key="item" 
+                                  class="text-xs font-mono px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 flex items-center gap-1.5 group hover:border-slate-700">
+                                <span>{{ item }}</span>
+                                <button @click="removeListItem(cat.key, iIdx)" type="button" class="text-slate-600 hover:text-red-400 transition-colors">
+                                    <i data-lucide="x" class="w-3 h-3"></i>
+                                </button>
+                            </span>
+                            <div v-if="lists[cat.key].length === 0" class="w-full p-4 text-center text-slate-600 text-xs font-mono">List is empty</div>
+                        </div>
+                    </div>
+
+                    <div class="pt-2 border-t border-slate-800/80 flex justify-end">
+                        <button @click="clearCategoryList(cat.key)" type="button" class="text-[11px] text-slate-500 hover:text-red-400 transition-colors flex items-center gap-1">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                            <span>Clear Category</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- LIVE CSV PREVIEW MODAL -->
+        <div v-if="showPreviewModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+            <div class="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+                <div class="p-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="file-spreadsheet" class="w-5 h-5 text-emerald-400"></i>
+                        <h3 class="font-bold text-sm text-white">Live Standard CSV Format Preview</h3>
+                    </div>
+                    <button @click="showPreviewModal = false" type="button" class="text-slate-400 hover:text-white p-1">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+
+                <div class="p-5 overflow-y-auto space-y-4 flex-1 font-mono text-xs">
+                    <div>
+                        <div class="text-xs font-sans font-bold text-slate-400 mb-1">Generated Standard Filename:</div>
+                        <div class="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sky-400 font-bold">
+                            {{ previewFilename }}
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="text-xs font-sans font-bold text-slate-400 mb-1">Raw Standard CSV Content Output:</div>
+                        <pre class="p-4 bg-slate-950 text-emerald-400 rounded-xl text-[11px] overflow-x-auto whitespace-pre leading-relaxed border border-slate-800/80">{{ previewCsvContent }}</pre>
+                    </div>
+                </div>
+
+                <div class="p-4 bg-slate-950 border-t border-slate-800 flex justify-end gap-3">
+                    <button @click="copyPreviewToClipboard" type="button" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex items-center gap-2 transition-all">
+                        <i data-lucide="copy" class="w-4 h-4"></i>
+                        <span>Copy to Clipboard</span>
+                    </button>
+                    <button @click="downloadCsvFile(previewCsvContent, previewFilename)" type="button" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-lg shadow-emerald-600/20">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                        <span>Download CSV</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- TOAST NOTIFICATION FLOATER -->
+        <div v-if="toast" 
+             class="fixed bottom-6 right-6 px-4 py-3 rounded-xl shadow-2xl text-white font-medium text-xs flex items-center gap-2.5 z-50 transition-all duration-300 border backdrop-blur-lg"
+             :class="toast.type === 'error' ? 'bg-red-950/90 border-red-500/50 text-red-200' : 'bg-emerald-950/90 border-emerald-500/50 text-emerald-200'">
+            <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400" v-if="toast.type === 'success'"></i>
+            <i data-lucide="alert-circle" class="w-4 h-4 text-red-400" v-if="toast.type === 'error'"></i>
+            <span>{{ toast.message }}</span>
+        </div>
+
+    </div>
+
+    <!-- VUE 3 APPLICATION LOGIC -->
+    <script>
+        const { createApp, ref, computed, onMounted, onUpdated } = Vue;
+
+        createApp({
+            setup() {
+                const currentTab = ref('creator');
+                const toast = ref(null);
+                const showPreviewModal = ref(false);
+                const activeDropdown = ref(null);
+                const activeMatrixColorIndex = ref(null);
+                const quickFillQty = ref(5);
+
+                const defaultLists = {
+                    productTypes: ['DRS', 'JS', 'SET', 'JK', 'TOP', 'SP', 'LP', 'SKT', 'SLS', 'SLD', 'BRA', 'PT', 'BRS', 'UBL', 'SH', 'BL'],
+                    colors: [
+                        'A', 'APPLE GREEN', 'ARMY GREEN', 'B', 'B.RED', 'BEIGE', 'BLACK', 'BLUE', 'BROWN', 
+                        'C', 'CK', 'COCO', 'COFFEE', 'CREAM', 'D', 'D.BLUE', 'D.BROWN', 'D.GREEN', 'D.GREY', 
+                        'D.ORANGE', 'D.PINK', 'D.PURPLE', 'D.YELLOW', 'GREEN', 'GREY', 'KHAKI', 'L.BLUE', 
+                        'L.BROWN', 'L.GREEN', 'L.GREY', 'L.ORANGE', 'L.PINK', 'L.PURPLE', 'L.YELLOW', 
+                        'LINE', 'MAROON', 'MATCHA', 'MILK'
+                    ],
+                    rackNames: ['J1', 'J2', 'J3', 'J4', 'J5', 'J6', 'J7', 'B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9'],
+                    rackNos: [
+                        '01A', '01B', '01C', '01D', '02A', '02B', '02C', '02D', '03A', '03B', '03C', '03D', 
+                        '04A', '04B', '04C', '04D', '05A', '05B', '05C', '05D', '06A', '06B', '06C', '06D', 
+                        '07A', '07B', '07C', '07D', '08A', '08B', '08C', '08D', '09A', '09B', '09C', '09D', 
+                        '10A', '10B', '10C', '10D', '11A', '11B', '11C', '11D', '12A', '12B', '12C', '12D'
+                    ],
+                    sizes: ['S', 'M', 'L', 'XL', 'XXL', 'XS', 'XXXL']
+                };
+
+                const lists = ref(JSON.parse(JSON.stringify(defaultLists)));
+
+                const listCategories = ref([
+                    { key: 'productTypes', title: 'Product Types', icon: 'tag', newItemInput: '', bulkInput: '', showBulk: false },
+                    { key: 'colors', title: 'Colors', icon: 'palette', newItemInput: '', bulkInput: '', showBulk: false },
+                    { key: 'rackNames', title: 'Rack Names', icon: 'map-pin', newItemInput: '', bulkInput: '', showBulk: false },
+                    { key: 'rackNos', title: 'Rack Numbers', icon: 'hash', newItemInput: '', bulkInput: '', showBulk: false },
+                    { key: 'sizes', title: 'Sizes', icon: 'ruler', newItemInput: '', bulkInput: '', showBulk: false },
+                ]);
+
+                // Form fields cleared except weight (300) and targetQty
+                const form = ref({
+                    productName: '',
+                    productType: '',
+                    rackName: '',
+                    rackNo: '',
+                    weight: 300,
+                    price: '',
+                    totalQtyTarget: 0,
+                    comment: ''
+                });
+
+                const createEmptyMatrixRows = (count = 5) => {
+                    return Array.from({ length: count }, () => ({
+                        color: '',
+                        quantities: {}
+                    }));
+                };
+
+                const matrixRows = ref(createEmptyMatrixRows(5));
+                const submittedProducts = ref([]);
+
+                const addMatrixRow = () => {
+                    matrixRows.value.push({ color: '', quantities: {} });
+                    showToast('Added new color row');
+                };
+
+                const generatedParentName = computed(() => {
+                    const pName = (form.value.productName || 'PRODUCT').trim();
+                    const pType = (form.value.productType || 'TYPE').trim().toUpperCase();
+                    const rName = (form.value.rackName || 'RACK').trim().toUpperCase();
+                    const rNo = (form.value.rackNo || 'NO').trim().toUpperCase();
+                    return `${pName}_${pType}_${rName}${rNo}`;
+                });
+
+                const totalListItemsCount = computed(() => {
+                    return Object.values(lists.value).reduce((sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0), 0);
+                });
+
+                const filteredProductTypes = computed(() => {
+                    const q = (form.value.productType || '').toLowerCase();
+                    return lists.value.productTypes.filter(i => i.toLowerCase().includes(q));
+                });
+
+                const filteredRackNames = computed(() => {
+                    const q = (form.value.rackName || '').toLowerCase();
+                    return lists.value.rackNames.filter(i => i.toLowerCase().includes(q));
+                });
+
+                const filteredRackNos = computed(() => {
+                    const q = (form.value.rackNo || '').toLowerCase();
+                    return lists.value.rackNos.filter(i => i.toLowerCase().includes(q));
+                });
+
+                const filterColors = (queryStr) => {
+                    const q = (queryStr || '').toLowerCase();
+                    return lists.value.colors.filter(c => c.toLowerCase().includes(q));
+                };
+
+                const liveMatrixTotals = computed(() => {
+                    let totalQty = 0;
+                    let variantCount = 0;
+
+                    matrixRows.value.forEach(row => {
+                        if (row.color && row.color.trim() !== '') {
+                            Object.values(row.quantities || {}).forEach(q => {
+                                const val = parseInt(q, 10);
+                                if (!isNaN(val) && val > 0) {
+                                    totalQty += val;
+                                    variantCount++;
+                                }
+                            });
+                        }
+                    });
+
+                    return { totalQty, variantCount };
+                });
+
+                const isQtyMatch = computed(() => {
+                    const target = parseInt(form.value.totalQtyTarget, 10) || 0;
+                    if (target <= 0) return true;
+                    return liveMatrixTotals.value.totalQty === target;
+                });
+
+                const batchGrandQty = computed(() => {
+                    return submittedProducts.value.reduce((sum, p) => sum + (p.totalQty || 0), 0);
+                });
+
+                const batchGrandVariants = computed(() => {
+                    return submittedProducts.value.reduce((sum, p) => sum + (p.variants ? p.variants.length : 0), 0);
+                });
+
+                const calculateColorKeyword = (colorStr, sizeStr) => {
+                    if (!colorStr) return sizeStr || '';
+                    let c = colorStr.trim().toUpperCase();
+                    c = c.replace(/^APPLE\s+/g, 'A');
+                    c = c.replace(/^D[\.\s]+/g, 'D');
+                    c = c.replace(/^L[\.\s]+/g, 'L');
+                    c = c.replace(/^B[\.\s]+/g, 'B');
+                    c = c.replace(/[^A-Z0-9]/g, '');
+                    return c + sizeStr;
+                };
+
+                const showToast = (message, type = 'success') => {
+                    toast.value = { message, type };
+                    setTimeout(() => { toast.value = null; }, 3000);
+                };
+
+                const toggleDropdown = (field) => {
+                    activeDropdown.value = activeDropdown.value === field ? null : field;
+                };
+
+                const selectDropdownItem = (field, value) => {
+                    form.value[field] = value;
+                    activeDropdown.value = null;
+                };
+
+                const selectMatrixColor = (row, colorVal) => {
+                    row.color = colorVal;
+                    activeMatrixColorIndex.value = null;
+                };
+
+                const clearMatrixRow = (row) => {
+                    row.color = '';
+                    row.quantities = {};
+                };
+
+                const clearMatrix = () => {
+                    matrixRows.value = createEmptyMatrixRows(5);
+                    showToast('Matrix cleared');
+                };
+
+                const quickFillMatrix = () => {
+                    let filledRows = 0;
+                    matrixRows.value.forEach(row => {
+                        if (row.color && row.color.trim() !== '') {
+                            if (!row.quantities) row.quantities = {};
+                            lists.value.sizes.forEach(sz => {
+                                row.quantities[sz] = quickFillQty.value;
+                            });
+                            filledRows++;
+                        }
+                    });
+
+                    if (filledRows === 0) {
+                        showToast('Select at least 1 color row first', 'error');
+                    } else {
+                        showToast(`Filled ${filledRows} colors with qty ${quickFillQty.value}`);
+                    }
+                };
+
+                const handleMatrixKeyNav = (event, rIdx, sIdx) => {
+                    const key = event.key;
+                    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter'].includes(key)) {
+                        let targetRow = rIdx;
+                        let targetSize = sIdx;
+                        const sizeCount = lists.value.sizes.length;
+                        const rowCount = matrixRows.value.length;
+
+                        if (key === 'ArrowUp') targetRow = Math.max(0, rIdx - 1);
+                        if (key === 'ArrowDown' || key === 'Enter') targetRow = Math.min(rowCount - 1, rIdx + 1);
+                        if (key === 'ArrowLeft') targetSize = Math.max(0, sIdx - 1);
+                        if (key === 'ArrowRight') targetSize = Math.min(sizeCount - 1, sIdx + 1);
+
+                        if (targetRow !== rIdx || targetSize !== sIdx) {
+                            event.preventDefault();
+                            const inputs = document.querySelectorAll('.matrix-cell');
+                            const targetIndex = (targetRow * sizeCount) + targetSize;
+                            if (inputs[targetIndex]) {
+                                inputs[targetIndex].focus();
+                                inputs[targetIndex].select();
+                            }
+                        }
+                    }
+                };
+
+                const resetForm = () => {
+                    form.value = {
+                        productName: '',
+                        productType: '',
+                        rackName: '',
+                        rackNo: '',
+                        weight: 300,
+                        price: '',
+                        totalQtyTarget: 0,
+                        comment: ''
+                    };
+                    matrixRows.value = createEmptyMatrixRows(5);
+                    showToast('Form reset');
+                };
+
+                const extractProductFromForm = () => {
+                    const pName = (form.value.productName || 'PRODUCT').trim();
+                    const parentName = generatedParentName.value;
+                    const pr = form.value.price || 0;
+                    const w = form.value.weight || 300;
+
+                    const variants = [];
+                    let totalQty = 0;
+
+                    matrixRows.value.forEach(row => {
+                        if (row.color && row.color.trim() !== '') {
+                            const cClean = row.color.trim().toUpperCase();
+                            lists.value.sizes.forEach(sz => {
+                                const val = parseInt((row.quantities || {})[sz], 10);
+                                if (!isNaN(val) && val > 0) {
+                                    const variantName = `${cClean} ${sz}`;
+                                    const kw = calculateColorKeyword(cClean, sz);
+
+                                    variants.push({
+                                        name: variantName,
+                                        keyword: kw,
+                                        mainKeyword: pName,
+                                        price: pr,
+                                        inventory: val,
+                                        origInventory: val,
+                                        weight: w
+                                    });
+                                    totalQty += val;
+                                }
+                            });
+                        }
+                    });
+
+                    return {
+                        id: Date.now(),
+                        parentName,
+                        productName: pName,
+                        weight: w,
+                        price: pr,
+                        comment: form.value.comment,
+                        totalQty,
+                        variants
+                    };
+                };
+
+                const validateFormAndMatrix = () => {
+                    if (!form.value.productName || !form.value.productName.trim()) {
+                        showToast('Please enter Product Name', 'error');
+                        return false;
+                    }
+
+                    const target = parseInt(form.value.totalQtyTarget, 10);
+                    if (isNaN(target) || target <= 0) {
+                        showToast('Please enter a valid Target Total Qty', 'error');
+                        return false;
+                    }
+
+                    const matrixSum = liveMatrixTotals.value.totalQty;
+                    if (matrixSum !== target) {
+                        showToast(`Validation Error! Matrix Sum Qty (${matrixSum}) does not match Target Total Qty (${target})`, 'error');
+                        return false;
+                    }
+
+                    return true;
+                };
+
+                const submitCurrentForm = () => {
+                    if (!validateFormAndMatrix()) return;
+
+                    const product = extractProductFromForm();
+                    if (product.variants.length === 0) {
+                        showToast('Please select at least 1 color and enter quantity', 'error');
+                        return;
+                    }
+
+                    submittedProducts.value.unshift(product);
+                    saveBatchToStorage();
+                    showToast(`Submitted ${product.parentName} with ${product.variants.length} variants!`);
+                };
+
+                const removeQueuedProduct = (idx) => {
+                    submittedProducts.value.splice(idx, 1);
+                    saveBatchToStorage();
+                    showToast('Product removed from queue');
+                };
+
+                const clearBatchQueue = () => {
+                    submittedProducts.value = [];
+                    saveBatchToStorage();
+                    showToast('Batch queue cleared');
+                };
+
+                const buildStandardCsvString = (productList) => {
+                    const header = "Name,Keyword,Main Product Keyword,Price,Cost,Inventory,Original Inventory,Weight,SKU,Description,Purchase Limit,Pre-Order Limit";
+                    const rows = [header];
+
+                    productList.forEach(p => {
+                        rows.push(`"${p.parentName}","${p.productName}",,,,,,,,,,`);
+                        (p.variants || []).forEach(v => {
+                            rows.push(`"${v.name}","${v.keyword}","${v.mainKeyword}",${v.price},,${v.inventory},${v.origInventory},${v.weight},,,,`);
+                        });
+                    });
+
+                    return rows.join("\n");
+                };
+
+                const generateStandardFilename = () => {
+                    const now = new Date();
+                    const YYYY = now.getFullYear();
+                    const MM = String(now.getMonth() + 1).padStart(2, '0');
+                    const DD = String(now.getDate()).padStart(2, '0');
+                    const hh = String(now.getHours()).padStart(2, '0');
+                    const mm = String(now.getMinutes()).padStart(2, '0');
+                    const ss = String(now.getSeconds()).padStart(2, '0');
+
+                    return `ULIVE BULK UPLOAD & ${YYYY}-${MM}-${DD}_${hh}-${mm}-${ss}.csv`;
+                };
+
+                const downloadCsvFile = (content, filename) => {
+                    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.setAttribute('href', url);
+                    link.setAttribute('download', filename);
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    showToast(`Downloaded CSV: ${filename}`);
+                };
+
+                const downloadSingleFormCsv = () => {
+                    if (!validateFormAndMatrix()) return;
+
+                    const product = extractProductFromForm();
+                    if (product.variants.length === 0) {
+                        showToast('Matrix is empty! Fill in Product details first.', 'error');
+                        return;
+                    }
+                    const csvContent = buildStandardCsvString([product]);
+                    downloadCsvFile(csvContent, generateStandardFilename());
+                };
+
+                const exportBatchCsv = () => {
+                    if (submittedProducts.value.length === 0) {
+                        showToast('Batch queue is empty!', 'error');
+                        return;
+                    }
+                    const csvContent = buildStandardCsvString(submittedProducts.value);
+                    downloadCsvFile(csvContent, generateStandardFilename());
+                };
+
+                const previewCsvContent = computed(() => {
+                    const currentProd = extractProductFromForm();
+                    if (currentProd.variants.length > 0) {
+                        return buildStandardCsvString([currentProd]);
+                    } else if (submittedProducts.value.length > 0) {
+                        return buildStandardCsvString(submittedProducts.value);
+                    } else {
+                        return buildStandardCsvString([{
+                            parentName: 'PRODUCT_TYPE_RACKNO',
+                            productName: 'PRODUCT',
+                            variants: [
+                                { name: 'BLACK S', keyword: 'BS', mainKeyword: 'PRODUCT', price: 0, inventory: 10, origInventory: 10, weight: 300 }
+                            ]
+                        }]);
+                    }
+                });
+
+                const previewFilename = computed(() => generateStandardFilename());
+
+                const openPreviewModal = () => {
+                    showPreviewModal.value = true;
+                };
+
+                const copyPreviewToClipboard = () => {
+                    const textarea = document.createElement('textarea');
+                    textarea.value = previewCsvContent.value;
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textarea);
+                    showToast('CSV content copied to clipboard!');
+                };
+
+                const addSingleListItem = (catKey) => {
+                    const catObj = listCategories.value.find(c => c.key === catKey);
+                    if (catObj && catObj.newItemInput && catObj.newItemInput.trim()) {
+                        const val = catObj.newItemInput.trim().toUpperCase();
+                        if (!lists.value[catKey].includes(val)) {
+                            lists.value[catKey].push(val);
+                            catObj.newItemInput = '';
+                            saveListsToStorage();
+                            showToast(`Added ${val} to ${catObj.title}`);
+                        } else {
+                            showToast(`${val} already exists!`, 'error');
+                        }
+                    }
+                };
+
+                const processBulkListAdd = (catKey) => {
+                    const catObj = listCategories.value.find(c => c.key === catKey);
+                    if (catObj && catObj.bulkInput && catObj.bulkInput.trim()) {
+                        const items = catObj.bulkInput.split(/[\n,]+/).map(s => s.trim().toUpperCase()).filter(s => s.length > 0);
+                        let addedCount = 0;
+                        items.forEach(item => {
+                            if (!lists.value[catKey].includes(item)) {
+                                lists.value[catKey].push(item);
+                                addedCount++;
+                            }
+                        });
+                        catObj.bulkInput = '';
+                        catObj.showBulk = false;
+                        saveListsToStorage();
+                        showToast(`Bulk added ${addedCount} items to ${catObj.title}`);
+                    }
+                };
+
+                const removeListItem = (catKey, index) => {
+                    lists.value[catKey].splice(index, 1);
+                    saveListsToStorage();
+                };
+
+                const clearCategoryList = (catKey) => {
+                    lists.value[catKey] = [];
+                    saveListsToStorage();
+                    showToast('Category cleared');
+                };
+
+                const exportListsConfigJson = () => {
+                    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(lists.value, null, 2));
+                    const downloadAnchor = document.createElement('a');
+                    downloadAnchor.setAttribute("href", dataStr);
+                    downloadAnchor.setAttribute("download", "ulive_lists_config.json");
+                    document.body.appendChild(downloadAnchor);
+                    downloadAnchor.click();
+                    downloadAnchor.remove();
+                    showToast('Exported ulive_lists_config.json');
+                };
+
+                const importListsConfigJson = (event) => {
+                    const file = event.target.files ? event.target.files[0] : null;
+                    if (!file) return;
+
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const parsed = JSON.parse(e.target.result);
+                            ['productTypes', 'colors', 'rackNames', 'rackNos', 'sizes'].forEach(k => {
+                                if (Array.isArray(parsed[k])) {
+                                    lists.value[k] = parsed[k];
+                                }
+                            });
+                            saveListsToStorage();
+                            showToast('Successfully imported lists config JSON!');
+                        } catch (err) {
+                            showToast('Invalid JSON file format!', 'error');
+                        }
+                    };
+                    reader.readAsText(file);
+                };
+
+                const resetListsToDefaults = () => {
+                    lists.value = JSON.parse(JSON.stringify(defaultLists));
+                    saveListsToStorage();
+                    showToast('Reset all lists to system defaults');
+                };
+
+                const saveListsToStorage = () => {
+                    try { localStorage.setItem('ulive_lists_config', JSON.stringify(lists.value)); } catch(e){}
+                };
+
+                const loadListsFromStorage = () => {
+                    try {
+                        const saved = localStorage.getItem('ulive_lists_config');
+                        if (saved) {
+                            const parsed = JSON.parse(saved);
+                            ['productTypes', 'colors', 'rackNames', 'rackNos', 'sizes'].forEach(k => {
+                                if (Array.isArray(parsed[k])) lists.value[k] = parsed[k];
+                            });
+                        }
+                    } catch(e){}
+                };
+
+                const saveBatchToStorage = () => {
+                    try { localStorage.setItem('ulive_submitted_batch', JSON.stringify(submittedProducts.value)); } catch(e){}
+                };
+
+                const loadBatchFromStorage = () => {
+                    try {
+                        const saved = localStorage.getItem('ulive_submitted_batch');
+                        if (saved) submittedProducts.value = JSON.parse(saved);
+                    } catch(e){}
+                };
+
+                const handleGlobalClick = (e) => {
+                    if (e && e.target && typeof e.target.closest === 'function') {
+                        if (!e.target.closest('.relative')) {
+                            activeDropdown.value = null;
+                            activeMatrixColorIndex.value = null;
+                        }
+                    }
+                };
+
+                const renderLucideIcons = () => {
+                    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+                        window.lucide.createIcons();
+                    }
+                };
+
+                onMounted(() => {
+                    loadListsFromStorage();
+                    loadBatchFromStorage();
+                    window.addEventListener('click', handleGlobalClick);
+                    renderLucideIcons();
+                });
+
+                onUpdated(() => {
+                    renderLucideIcons();
+                });
+
+                return {
+                    currentTab,
+                    toast,
+                    showPreviewModal,
+                    activeDropdown,
+                    activeMatrixColorIndex,
+                    quickFillQty,
+                    lists,
+                    listCategories,
+                    form,
+                    matrixRows,
+                    submittedProducts,
+                    generatedParentName,
+                    totalListItemsCount,
+                    filteredProductTypes,
+                    filteredRackNames,
+                    filteredRackNos,
+                    filterColors,
+                    liveMatrixTotals,
+                    isQtyMatch,
+                    batchGrandQty,
+                    batchGrandVariants,
+                    toggleDropdown,
+                    selectDropdownItem,
+                    selectMatrixColor,
+                    clearMatrixRow,
+                    clearMatrix,
+                    quickFillMatrix,
+                    handleMatrixKeyNav,
+                    addMatrixRow,
+                    resetForm,
+                    submitCurrentForm,
+                    removeQueuedProduct,
+                    clearBatchQueue,
+                    downloadSingleFormCsv,
+                    exportBatchCsv,
+                    previewCsvContent,
+                    previewFilename,
+                    openPreviewModal,
+                    copyPreviewToClipboard,
+                    downloadCsvFile,
+                    addSingleListItem,
+                    processBulkListAdd,
+                    removeListItem,
+                    clearCategoryList,
+                    exportListsConfigJson,
+                    importListsConfigJson,
+                    resetListsToDefaults
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
