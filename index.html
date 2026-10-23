@@ -92,7 +92,7 @@
                 <div>
                     <div class="flex items-center gap-2.5">
                         <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-white">Ulive Bulk Upload Creator</h1>
-                        <span class="text-[11px] px-2.5 py-0.5 rounded-full font-mono font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">v3.1 Pro</span>
+                        <span class="text-[11px] px-2.5 py-0.5 rounded-full font-mono font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">v3.3 Pro</span>
                     </div>
                     <p class="text-xs text-slate-400 font-medium">Standard CSV Engine & Configuration List Manager</p>
                 </div>
@@ -335,7 +335,7 @@
                                     <span class="text-[10px] text-slate-400 font-semibold px-2">Quick Qty:</span>
                                     <input type="number" min="0" v-model.number="quickFillQty" class="w-12 text-center text-xs rounded bg-slate-800 text-white font-mono p-1 border border-slate-700">
                                     <button @click="quickFillMatrix" type="button" class="ml-1 px-2.5 py-1 bg-sky-600/30 hover:bg-sky-600/50 text-sky-300 rounded-lg font-medium transition-colors">
-                                        Fill Rows
+                                        Fill All Rows
                                     </button>
                                 </div>
 
@@ -351,10 +351,14 @@
                                 <thead>
                                     <tr class="border-b border-slate-800 bg-slate-900/60 font-mono text-xs text-slate-400">
                                         <th class="p-2.5 w-52 font-bold uppercase tracking-wider">COLOR</th>
+                                        <!-- CLICKABLE SIZE HEADERS (SUPPORTS BLANK/EMPTY SIZE) -->
                                         <th v-for="size in lists.sizes" :key="size" class="p-2 text-center font-bold">
-                                            <span class="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-sky-300 font-mono inline-block min-w-[36px]">
-                                                {{ size }}
-                                            </span>
+                                            <button @click="quickFillColumn(size)" 
+                                                    type="button" 
+                                                    :title="'Click to fill column ' + (size === '' ? 'BLANK' : size) + ' with quick qty (' + quickFillQty + ')'"
+                                                    class="px-2 py-1 rounded bg-slate-800 hover:bg-sky-600 hover:text-white border border-slate-700 text-sky-300 font-mono inline-block min-w-[36px] transition-colors cursor-pointer shadow-sm">
+                                                {{ size === '' ? 'BLANK' : size }}
+                                            </button>
                                         </th>
                                         <th class="p-2 text-center w-12 text-slate-500">CLEAR</th>
                                     </tr>
@@ -423,7 +427,7 @@
                     <div class="text-[11px] text-slate-500 flex items-center justify-between pt-2 border-t border-slate-800">
                         <span class="flex items-center gap-1.5">
                             <i data-lucide="keyboard" class="w-4 h-4 text-sky-400"></i>
-                            <span>Use Arrow Keys or Tab/Enter to navigate cells smoothly.</span>
+                            <span>Click any size header above to quick-fill that column. Supports blank sizes for color-only products.</span>
                         </span>
                         <span class="font-mono text-slate-400">Configured Sizes: <b>{{ lists.sizes.length }}</b></span>
                     </div>
@@ -542,7 +546,7 @@
                         <i data-lucide="sliders" class="w-5 h-5 text-sky-400"></i>
                         <span>Configuration List Manager</span>
                     </h2>
-                    <p class="text-xs text-slate-400">Customize dropdown options for Product Types, Colors, Racks, and Sizes. Changes auto-save to browser storage.</p>
+                    <p class="text-xs text-slate-400">Customize dropdown options for Product Types, Colors, Racks, and Sizes (including blank sizes). Changes auto-save.</p>
                 </div>
 
                 <!-- CONFIG IMPORTER / EXPORTER -->
@@ -584,14 +588,14 @@
                             <input type="text" 
                                    v-model="cat.newItemInput" 
                                    @keyup.enter="addSingleListItem(cat.key)"
-                                   :placeholder="'Add new ' + cat.title"
+                                   :placeholder="cat.key === 'sizes' ? 'Add size (leave empty for blank)' : 'Add new ' + cat.title"
                                    class="flex-1 text-xs rounded-xl glass-input px-3 py-2 uppercase font-mono">
-                            <button @click="addSingleListItem(cat.key)" type="button" class="p-2 bg-sky-600 hover:bg-sky-500 text-white rounded-xl transition-colors">
+                            <button @click="addSingleListItem(cat.key)" type="button" class="p-2 bg-sky-600 hover:bg-sky-500 text-white rounded-xl transition-colors" title="Add Item">
                                 <i data-lucide="plus" class="w-4 h-4"></i>
                             </button>
                         </div>
 
-                        <div class="space-y-2">
+                        <div class="space-y-2" v-if="cat.key !== 'sizes'">
                             <button @click="cat.showBulk = !cat.showBulk" type="button" class="text-[11px] text-sky-400 hover:underline flex items-center gap-1 font-medium">
                                 <i data-lucide="file-text" class="w-3 h-3"></i>
                                 <span>{{ cat.showBulk ? 'Hide Bulk Paste' : '+ Bulk Add Items' }}</span>
@@ -609,7 +613,7 @@
                             <span v-for="(item, iIdx) in lists[cat.key]" 
                                   :key="item" 
                                   class="text-xs font-mono px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 flex items-center gap-1.5 group hover:border-slate-700">
-                                <span>{{ item }}</span>
+                                <span class="font-bold text-sky-300">{{ item === '' ? '[BLANK SIZE]' : item }}</span>
                                 <button @click="removeListItem(cat.key, iIdx)" type="button" class="text-slate-600 hover:text-red-400 transition-colors">
                                     <i data-lucide="x" class="w-3 h-3"></i>
                                 </button>
@@ -708,7 +712,7 @@
                         '07A', '07B', '07C', '07D', '08A', '08B', '08C', '08D', '09A', '09B', '09C', '09D', 
                         '10A', '10B', '10C', '10D', '11A', '11B', '11C', '11D', '12A', '12B', '12C', '12D'
                     ],
-                    sizes: ['S', 'M', 'L', 'XL', 'XXL', 'XS', 'XXXL']
+                    sizes: ['', 'S', 'M', 'L', 'XL', 'XXL', 'XS', 'XXXL'] // Including empty/blank size support
                 };
 
                 const lists = ref(JSON.parse(JSON.stringify(defaultLists)));
@@ -718,10 +722,9 @@
                     { key: 'colors', title: 'Colors', icon: 'palette', newItemInput: '', bulkInput: '', showBulk: false },
                     { key: 'rackNames', title: 'Rack Names', icon: 'map-pin', newItemInput: '', bulkInput: '', showBulk: false },
                     { key: 'rackNos', title: 'Rack Numbers', icon: 'hash', newItemInput: '', bulkInput: '', showBulk: false },
-                    { key: 'sizes', title: 'Sizes', icon: 'ruler', newItemInput: '', bulkInput: '', showBulk: false },
+                    { key: 'sizes', title: 'Sizes (Blank allowed)', icon: 'ruler', newItemInput: '', bulkInput: '', showBulk: false },
                 ]);
 
-                // Form fields cleared except weight (300) and targetQty
                 const form = ref({
                     productName: '',
                     productType: '',
@@ -786,7 +789,7 @@
 
                     matrixRows.value.forEach(row => {
                         if (row.color && row.color.trim() !== '') {
-                            Object.values(row.quantities || {}).forEach(q => {
+                            Object.entries(row.quantities || {}).forEach(([sz, q]) => {
                                 const val = parseInt(q, 10);
                                 if (!isNaN(val) && val > 0) {
                                     totalQty += val;
@@ -821,7 +824,7 @@
                     c = c.replace(/^L[\.\s]+/g, 'L');
                     c = c.replace(/^B[\.\s]+/g, 'B');
                     c = c.replace(/[^A-Z0-9]/g, '');
-                    return c + sizeStr;
+                    return c + (sizeStr ? sizeStr : '');
                 };
 
                 const showToast = (message, type = 'success') => {
@@ -869,6 +872,28 @@
                         showToast('Select at least 1 color row first', 'error');
                     } else {
                         showToast(`Filled ${filledRows} colors with qty ${quickFillQty.value}`);
+                    }
+                };
+
+                const quickFillColumn = (size) => {
+                    let filledRows = 0;
+                    matrixRows.value.forEach(row => {
+                        if (row.color && row.color.trim() !== '') {
+                            if (!row.quantities) row.quantities = {};
+                            row.quantities[size] = quickFillQty.value;
+                            filledRows++;
+                        }
+                    });
+
+                    const sizeLabel = size === '' ? 'BLANK' : size;
+                    if (filledRows === 0) {
+                        matrixRows.value.forEach(row => {
+                            if (!row.quantities) row.quantities = {};
+                            row.quantities[size] = quickFillQty.value;
+                        });
+                        showToast(`Filled column ${sizeLabel} with qty ${quickFillQty.value} for all rows`);
+                    } else {
+                        showToast(`Filled column ${sizeLabel} with qty ${quickFillQty.value} for ${filledRows} active color rows`);
                     }
                 };
 
@@ -927,7 +952,7 @@
                             lists.value.sizes.forEach(sz => {
                                 const val = parseInt((row.quantities || {})[sz], 10);
                                 if (!isNaN(val) && val > 0) {
-                                    const variantName = `${cClean} ${sz}`;
+                                    const variantName = sz !== '' ? `${cClean} ${sz}` : cClean;
                                     const kw = calculateColorKeyword(cClean, sz);
 
                                     variants.push({
@@ -1098,15 +1123,17 @@
 
                 const addSingleListItem = (catKey) => {
                     const catObj = listCategories.value.find(c => c.key === catKey);
-                    if (catObj && catObj.newItemInput && catObj.newItemInput.trim()) {
-                        const val = catObj.newItemInput.trim().toUpperCase();
-                        if (!lists.value[catKey].includes(val)) {
-                            lists.value[catKey].push(val);
-                            catObj.newItemInput = '';
-                            saveListsToStorage();
-                            showToast(`Added ${val} to ${catObj.title}`);
-                        } else {
-                            showToast(`${val} already exists!`, 'error');
+                    if (catObj) {
+                        const val = catObj.newItemInput !== undefined ? catObj.newItemInput.trim().toUpperCase() : '';
+                        if (catKey === 'sizes' || val !== '') {
+                            if (!lists.value[catKey].includes(val)) {
+                                lists.value[catKey].push(val);
+                                catObj.newItemInput = '';
+                                saveListsToStorage();
+                                showToast(`Added item to ${catObj.title}`);
+                            } else {
+                                showToast('Item already exists!', 'error');
+                            }
                         }
                     }
                 };
@@ -1260,6 +1287,7 @@
                     clearMatrixRow,
                     clearMatrix,
                     quickFillMatrix,
+                    quickFillColumn,
                     handleMatrixKeyNav,
                     addMatrixRow,
                     resetForm,
